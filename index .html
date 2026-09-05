@@ -1,0 +1,749 @@
+<!DOCTYPE html>  
+<html lang="fr">  
+<head>  
+  <meta charset="UTF-8"/>  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>  
+  <title>BNP Paribas</title>  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>  
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>  
+  <style>  
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }  
+    html, body { touch-action: pan-y; -webkit-text-size-adjust: none; text-size-adjust: none; background: #e8ede9; min-height: 100vh; }  
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: flex-start; font-size: 16px; }  
+    .phone-wrapper { width: 100%; min-height: 100vh; display: flex; justify-content: center; }  
+    .phone { background: #fff; width: 100%; max-width: 430px; min-height: 100vh; display: flex; flex-direction: column; position: relative; }  
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid #e0ebe4; background: #fff; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }  
+    .topbar-menu { width: 30px; cursor: pointer; }  
+    .topbar-menu span { display: block; height: 2.5px; background: #00915a; border-radius: 2px; margin-bottom: 5px; }  
+    .topbar-menu span:last-child { margin-bottom: 0; }  
+    .topbar-mail { position: relative; cursor: pointer; }  
+    .topbar-mail svg { width: 28px; height: 28px; color: #00915a; }  
+    .mail-badge { position: absolute; top: -5px; right: -6px; background: #00915a; color: #fff; font-size: 10px; font-weight: 700; width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }  
+    .bnp-logo-header { height: 30px; width: auto; }  
+    .screen { display: none; flex-direction: column; flex: 1; }  
+    .screen.active { display: flex; }  
+    .login-content { flex: 1; padding: 0; display: flex; flex-direction: column; overflow-y: auto; }  
+    .greeting { font-size: 26px; font-weight: 700; color: #111; margin-bottom: 6px; }  
+    .greeting-sub { font-size: 14px; color: #777; margin-bottom: 20px; }  
+    .datetime-block { background: #f0f7f3; border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }  
+    .datetime-block .dt-date { font-size: 13px; color: #00915a; font-weight: 600; }  
+    .datetime-block .dt-time { font-size: 16px; font-weight: 800; color: #00603c; }  
+    .field { margin-bottom: 20px; }  
+    .field label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 8px; }  
+    .input-wrap { display: flex; align-items: center; border: 1.5px solid #d4d4d4; border-radius: 10px; padding: 0 14px; height: 52px; background: #fff; transition: border-color .15s; }  
+    .input-wrap:focus-within { border-color: #00915a; box-shadow: 0 0 0 3px rgba(0,145,90,.1); }  
+    .input-wrap svg { width: 19px; height: 19px; color: #9a9a9a; flex-shrink: 0; margin-right: 10px; }  
+    .input-wrap input { flex: 1; border: none; outline: none; font-size: 16px; color: #111; background: transparent; letter-spacing: .5px; }  
+    .input-wrap input::placeholder { color: #bbb; font-size: 15px; }  
+    .eye-btn { background: none; border: none; cursor: pointer; color: #9a9a9a; padding: 0; }  
+    .eye-btn svg { width: 19px; height: 19px; }  
+    .forgot { text-align: right; margin-top: -10px; margin-bottom: 32px; }  
+    .forgot a { font-size: 13px; color: #00915a; text-decoration: none; font-weight: 500; }  
+    .btn-login { width: 100%; height: 54px; background: #00915a; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 18px; -webkit-tap-highlight-color: transparent; }  
+    .divider { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }  
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e0e0e0; }  
+    .divider span { font-size: 12px; color: #aaa; }  
+    .btn-bio { width: 100%; height: 52px; background: #fff; border: 1.5px solid #d4d4d4; border-radius: 10px; font-size: 15px; color: #333; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; -webkit-tap-highlight-color: transparent; }  
+    .btn-bio svg { width: 22px; height: 22px; color: #00915a; }  
+    .error-msg { background: #fff0f0; border: 1px solid #f5b8b8; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #c40017; margin-bottom: 16px; display: none; }  
+    .error-msg.show { display: block; }  
+    .dash-content { flex: 1; overflow-y: auto; }  
+    .dash-inner { transform: scale(0.72); transform-origin: top left; width: 139%; padding: 28px 20px 20px; display: flex; flex-direction: column; gap: 24px; }  
+    .user-row { display: flex; align-items: center; gap: 16px; }  
+    .user-avatar { width: 60px; height: 60px; border-radius: 50%; background: #e8f5ef; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }  
+    .user-avatar svg { width: 34px; height: 34px; color: #00915a; }  
+    .user-info h2 { font-size: 22px; font-weight: 700; color: #111; }  
+    .user-info p { font-size: 13px; color: #888; margin-top: 3px; }  
+    .solde-card { background: linear-gradient(135deg, #00915a 0%, #006840 100%); border-radius: 16px; padding: 22px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 6px 20px rgba(0,145,90,0.3); }  
+    .solde-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.75); letter-spacing: 1px; margin-bottom: 10px; }  
+    .solde-amount { font-size: 36px; font-weight: 800; color: #fff; letter-spacing: -1px; }  
+    .solde-arrow svg { width: 22px; height: 22px; color: rgba(255,255,255,0.7); }  
+    .bottom-nav { border-top: 1px solid #e8e8e8; background: #fff; display: flex; padding: 10px 0 20px; flex-shrink: 0; }  
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }  
+    .nav-item svg { width: 24px; height: 24px; pointer-events: none; }  
+    .nav-item span { font-size: 11px; color: #888; pointer-events: none; }  
+    .nav-item.active span { color: #00915a; font-weight: 600; }  
+    .nav-item.active svg { color: #00915a; }  
+    .nav-item:not(.active) svg { color: #888; }  
+    .nav-active-line { width: 28px; height: 2.5px; background: #00915a; border-radius: 2px; margin-top: 2px; pointer-events: none; }  
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 12px; }  
+    .empty-state svg { width: 48px; height: 48px; color: #ddd; }  
+    .empty-state p { font-size: 14px; color: #bbb; text-align: center; }  
+    .vir-screen-wrap { flex: 1; background: #f5f9f7; overflow-y: auto; }  
+    .vir-card { width: 100%; background: #fff; }  
+    .vir-card-header { display: flex; align-items: flex-start; gap: 16px; padding: 22px 22px 18px; border-bottom: 1px solid #f0f0f0; }  
+    .vir-card-titles { flex: 1; }  
+    .vir-card-titles h2 { font-size: 18px; font-weight: 800; color: #111; margin-bottom: 4px; }  
+    .vir-card-titles p { font-size: 13px; color: #777; }  
+    .vir-close-btn { background: none; border: none; cursor: pointer; color: #555; padding: 2px; }  
+    .vir-close-btn svg { width: 22px; height: 22px; }  
+    .vir-body { padding: 20px 22px 0; }  
+    .vir-section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }  
+    .vir-section-icon { background: #e8f5ef; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }  
+    .vir-section-icon svg { width: 18px; height: 18px; color: #00915a; }  
+    .vir-section-head span { font-size: 15px; font-weight: 700; color: #00915a; }  
+    .vir-field { margin-bottom: 14px; }  
+    .vir-field label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }  
+    .vir-input { display: flex; align-items: center; border: 1.5px solid #d4d4d4; border-radius: 10px; padding: 0 14px; height: 48px; background: #fff; transition: border-color .15s; }  
+    .vir-input:focus-within { border-color: #00915a; }  
+    .vir-input svg { width: 17px; height: 17px; color: #aaa; flex-shrink: 0; margin-right: 10px; }  
+    .vir-input input { flex: 1; border: none; outline: none; font-size: 14px; color: #111; background: transparent; }  
+    .vir-input input::placeholder { color: #bbb; }  
+    .vir-input .info-icon { width: 17px; height: 17px; color: #bbb; flex-shrink: 0; margin-left: 8px; }  
+    .vir-divider { border: none; border-top: 1px solid #ebebeb; margin: 18px 0; }  
+    .vir-footer { display: flex; gap: 12px; padding: 18px 22px 22px; border-top: 1px solid #f0f0f0; margin-top: 18px; }  
+    .btn-annuler { flex: 1; height: 48px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; background: #fff; border: 1.5px solid #00915a; color: #00915a; font-family: inherit; }  
+    .btn-continuer { flex: 2; height: 48px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; background: #00915a; border: none; color: #fff; font-family: inherit; }  
+    .histo-section-title { font-size: 13px; font-weight: 800; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }  
+    .histo-section-title.bloque { color: #005c38; }  
+    .histo-section-title.normal { color: #888; }  
+    .histo-item-bloque { background: #fff; border-radius: 14px; border: 1.5px solid #d4ebe0; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,145,90,0.08); cursor: pointer; }  
+    .histo-icon-bloque { width: 44px; height: 44px; border-radius: 50%; background: #e8f5ef; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 22px; }  
+    .histo-info-bloque { flex: 1; min-width: 0; }  
+    .histo-info-bloque .h-name { font-size: 15px; font-weight: 700; color: #111; }  
+    .histo-info-bloque .h-sub { font-size: 12px; color: #999; margin-top: 3px; display: flex; align-items: center; gap: 5px; }  
+    .h-sub .annule-label { color: #005c38; font-weight: 700; }  
+    .histo-right-bloque { text-align: right; flex-shrink: 0; }  
+    .histo-right-bloque .h-montant { font-size: 15px; font-weight: 800; color: #005c38; display: block; }  
+    .histo-right-bloque .h-date { font-size: 11px; color: #bbb; display: block; margin-bottom: 6px; }  
+    .btn-pdf-card { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid #00915a; border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; color: #00915a; background: #fff; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }  
+    .btn-pdf-card svg { width: 13px; height: 13px; }  
+    .histo-item-normal { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid #f0f0f0; }  
+    .histo-icon-normal { width: 42px; height: 42px; border-radius: 50%; background: #e8f5ef; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }  
+    .histo-icon-normal svg { width: 20px; height: 20px; color: #00915a; }  
+    .histo-info-normal { flex: 1; }  
+    .histo-info-normal .h-name { font-size: 14px; font-weight: 600; color: #111; }  
+    .histo-info-normal .h-date { font-size: 12px; color: #999; margin-top: 2px; }  
+    .histo-right-normal { text-align: right; }  
+    .histo-right-normal .h-montant { font-size: 15px; font-weight: 800; color: #00915a; display: block; }  
+    .badge-attente { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #e8f5ef; color: #00603c; display: inline-block; margin-top: 3px; border: 1px solid #b3ddc9; }  
+    .confirm-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 28px; background: #fff; }  
+    .confirm-check-wrap { width: 100px; height: 100px; background: #e8f5ef; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 28px; }  
+    .confirm-check-wrap svg { width: 50px; height: 50px; color: #00915a; }  
+    .confirm-title { font-size: 26px; font-weight: 800; color: #111; text-align: center; margin-bottom: 12px; }  
+    .confirm-sub { font-size: 15px; color: #777; text-align: center; line-height: 1.6; margin-bottom: 44px; }  
+    .btn-dl-pdf { width: 100%; height: 54px; background: #fff; border: 2px solid #00915a; border-radius: 14px; font-size: 15px; font-weight: 700; color: #00915a; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; font-family: inherit; -webkit-tap-highlight-color: transparent; }  
+    .btn-dl-pdf svg { width: 20px; height: 20px; }  
+    .btn-retour-accueil { width: 100%; height: 54px; background: #00915a; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }  
+    .annule-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 500; display: none; align-items: flex-end; justify-content: center; }  
+    .annule-overlay.show { display: flex; }  
+    .annule-sheet { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 430px; padding: 0 0 40px; animation: slideUp .3s ease; max-height: 90vh; overflow-y: auto; }  
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }  
+    .annule-handle { width: 40px; height: 4px; background: #e0e0e0; border-radius: 2px; margin: 14px auto 0; }  
+    .annule-header { background: linear-gradient(135deg, #00915a 0%, #005c38 100%); padding: 28px 24px; text-align: center; }  
+    .annule-icon-wrap { width: 64px; height: 64px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 32px; }  
+    .annule-header h2 { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 4px; }  
+    .annule-header p { font-size: 13px; color: rgba(255,255,255,0.8); }  
+    .annule-body { padding: 20px 24px 0; }  
+    .annule-ref { background: #f8f8f8; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #888; text-align: center; margin-bottom: 16px; }  
+    .annule-ref span { font-weight: 700; color: #333; }  
+    .annule-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #f0f0f0; }  
+    .annule-row:last-child { border-bottom: none; }  
+    .annule-row-label { font-size: 13px; color: #888; }  
+    .annule-row-value { font-size: 13px; font-weight: 700; color: #111; text-align: right; max-width: 60%; word-break: break-all; }  
+    .annule-footer { padding: 18px 24px 0; display: flex; gap: 12px; }  
+    .btn-annule-pdf { flex: 1; height: 48px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; background: #fff; border: 1.5px solid #00915a; color: #00915a; font-family: inherit; }  
+    .btn-annule-close { flex: 1; height: 48px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; background: #00915a; border: none; color: #fff; font-family: inherit; }  
+    .notif-banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-20px); width: calc(100% - 32px); max-width: 398px; background: #1c1c1e; border-radius: 16px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; box-shadow: 0 8px 32px rgba(0,0,0,0.35); }  
+    .notif-banner.show { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }  
+    .notif-app-icon { width: 36px; height: 36px; border-radius: 8px; background: #00915a; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }  
+    .notif-app-icon svg { width: 20px; height: 20px; color: #fff; }  
+    .notif-content { flex: 1; }  
+    .notif-header { display: flex; justify-content: space-between; margin-bottom: 3px; }  
+    .notif-app-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.6); }  
+    .notif-time { font-size: 12px; color: rgba(255,255,255,0.4); }  
+    .notif-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px; }  
+    .notif-body { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4; }  
+  </style>  
+</head>  
+<body>  
+<div class="phone-wrapper"><div class="phone">  
+  
+  <div class="topbar">  
+    <div class="topbar-menu"><span></span><span></span><span></span></div>  
+    <svg class="bnp-logo-header" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">  
+      <text x="0" y="30" font-family="Arial" font-weight="800" font-size="22" fill="#00915a">BNP</text>  
+      <text x="50" y="30" font-family="Arial" font-weight="400" font-size="22" fill="#222">Paribas</text>  
+    </svg>  
+    <div class="topbar-mail">  
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>  
+      <div class="mail-badge">1</div>  
+    </div>  
+  </div>  
+  
+  <!-- LOGIN -->  
+  <div class="screen active" id="loginScreen">  
+    <div class="login-content">  
+    <div style="transform:scale(0.72);transform-origin:top left;width:139%;padding:36px 24px 24px;display:flex;flex-direction:column;">  
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">  
+        <div style="width:64px;height:64px;background:#00915a;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,145,90,0.35);">  
+          <svg viewBox="0 0 40 40" width="40" height="40" fill="none">  
+            <circle cx="20" cy="20" r="18" fill="#fff" opacity="0.15"/>  
+            <path d="M20 4 L22 14 L20 12 L18 14Z" fill="white"/>  
+            <path d="M20 36 L18 26 L20 28 L22 26Z" fill="white"/>  
+            <path d="M4 20 L14 18 L12 20 L14 22Z" fill="white"/>  
+            <path d="M36 20 L26 22 L28 20 L26 18Z" fill="white"/>  
+            <circle cx="20" cy="20" r="5" fill="white"/>  
+          </svg>  
+        </div>  
+        <div>  
+          <div style="font-size:26px;font-weight:800;color:#00915a;line-height:1;">BNP Paribas</div>  
+          <div style="font-size:14px;color:#777;margin-top:3px;">Espace client particuliers</div>  
+        </div>  
+      </div>  
+      <div class="datetime-block">  
+        <span class="dt-date" id="loginDate">Chargement...</span>  
+        <span class="dt-time" id="loginTime">--:--:--</span>  
+      </div>  
+      <div class="greeting">Bienvenue</div>  
+      <div class="greeting-sub">Connectez-vous à votre espace client</div>  
+      <div id="errorMsg" class="error-msg">Identifiant ou code incorrect. Veuillez réessayer.</div>  
+      <div class="field">  
+        <label>Identifiant</label>  
+        <div class="input-wrap">  
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>  
+          <input id="identifiant" type="text" placeholder="Votre identifiant" inputmode="numeric" value="3535442323"/>  
+        </div>  
+      </div>  
+      <div class="field">  
+        <label>Code secret</label>  
+        <div class="input-wrap">  
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>  
+          <input id="code" type="password" placeholder="Votre code secret" inputmode="numeric" value="12422"/>  
+          <button class="eye-btn" id="eyeBtn">  
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>  
+          </button>  
+        </div>  
+      </div>  
+      <div class="forgot"><a href="#">Code oublié ?</a></div>  
+      <button class="btn-login" id="btnLogin">Se connecter</button>  
+      <div class="divider"><span>ou</span></div>  
+      <button class="btn-bio" id="btnBio">  
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4c0 1.5-.83 2.8-2.04 3.5"/><path d="M12 16v.01"/></svg>  
+        Connexion biométrique  
+      </button>  
+    </div></div>  
+  </div>  
+  
+  <!-- ACCUEIL -->  
+  <div class="screen" id="accueilScreen">  
+    <div class="dash-content"><div class="dash-inner">  
+      <div class="user-row">  
+        <div class="user-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>  
+        <div class="user-info">  
+          <h2 id="nomCompteDisplay">Mon compte</h2>  
+          <p id="lastLogin">Dernière connexion : --/--/---- à --h--</p>  
+        </div>  
+      </div>  
+      <div class="solde-card">  
+        <div><div class="solde-label">SOLDE TOTAL</div><div class="solde-amount" id="soldeDisplay">17 000 000 €</div></div>  
+        <div class="solde-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>  
+      </div>  
+      <div id="accueilOps"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/></svg><p>Aucune opération récente</p></div></div>  
+    </div></div>  
+    <nav class="bottom-nav">  
+      <div class="nav-item active" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><div class="nav-active-line"></div><span>Accueil</span></div>  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span>Comptes</span></div>  
+      <div class="nav-item" data-target="virementScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"/><polyline points="15 5 19 9 15 13"/><line x1="19" y1="15" x2="5" y2="15"/><polyline points="9 11 5 15 9 19"/></svg><span>Virements</span></div>  
+      <div class="nav-item" data-target="historiqueScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/></svg><span>Historique</span></div>  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>Plus</span></div>  
+    </nav>  
+  </div>  
+  
+  <!-- VIREMENT -->  
+  <div class="screen" id="virementScreen">  
+    <div class="vir-screen-wrap">  
+      <div class="vir-card" style="transform:scale(0.72);transform-origin:top left;width:139%;margin-bottom:-28%;">  
+        <div class="vir-card-header">  
+          <div style="width:48px;height:48px;background:#00915a;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">  
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"/><polyline points="15 5 19 9 15 13"/><line x1="19" y1="15" x2="5" y2="15"/><polyline points="9 11 5 15 9 19"/></svg>  
+          </div>  
+          <div class="vir-card-titles"><h2>Nouvelle demande de virement</h2><p>Veuillez renseigner les informations ci-dessous.</p></div>  
+          <button class="vir-close-btn" id="btnFermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>  
+        </div>  
+        <div class="vir-body">  
+          <div class="vir-section-head"><div class="vir-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span>Émetteur</span></div>  
+          <div class="vir-field"><label>Nom de l'émetteur</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><input type="text" id="emetteur" placeholder="Nom de l'émetteur"/></div></div>  
+          <div class="vir-field"><label>IBAN de l'émetteur</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><input type="text" id="ibanEmetteur" placeholder="IBAN de l'émetteur"/></div></div>  
+          <div class="vir-field"><label>Banque de l'émetteur</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><input type="text" id="banqueEmetteur" placeholder="Nom de la banque"/></div></div>  
+          <hr class="vir-divider"/>  
+          <div class="vir-section-head"><div class="vir-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span>Bénéficiaire</span></div>  
+          <div class="vir-field"><label>Nom du bénéficiaire</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><input type="text" id="beneficiaire" placeholder="Nom du bénéficiaire"/></div></div>  
+          <div class="vir-field"><label>IBAN</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><input type="text" id="ibanBenef" placeholder="IBAN du bénéficiaire"/></div></div>  
+          <div class="vir-field"><label>BIC / SWIFT</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><input type="text" id="bic" placeholder="BIC / SWIFT"/></div></div>  
+          <div class="vir-field"><label>Motif</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><input type="text" id="motif" placeholder="Motif du virement"/></div></div>  
+          <div class="vir-field"><label>Email du bénéficiaire</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><input type="email" id="gmailBenef" placeholder="Email du bénéficiaire"/></div></div>  
+          <div class="vir-field"><label>Montant (€)</label><div class="vir-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><input type="number" id="montantVir" placeholder="Montant à virer" min="1" inputmode="numeric"/></div></div>  
+        </div>  
+        <div class="vir-footer">  
+          <button class="btn-annuler" id="btnAnnuler">Annuler</button>  
+          <button class="btn-continuer" id="btnContinuer">Continuer</button>  
+        </div>  
+      </div>  
+    </div>  
+    <nav class="bottom-nav">  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Accueil</span></div>  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span>Comptes</span></div>  
+      <div class="nav-item active" data-target="virementScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"/><polyline points="15 5 19 9 15 13"/><line x1="19" y1="15" x2="5" y2="15"/><polyline points="9 11 5 15 9 19"/></svg><div class="nav-active-line"></div><span>Virements</span></div>  
+      <div class="nav-item" data-target="historiqueScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/></svg><span>Historique</span></div>  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>Plus</span></div>  
+    </nav>  
+  </div>  
+  
+  <!-- HISTORIQUE -->  
+  <div class="screen" id="historiqueScreen">  
+    <div class="dash-content"><div class="dash-inner">  
+      <div><div style="font-size:22px;font-weight:800;color:#111;">Historique</div><div style="font-size:13px;color:#888;margin-top:4px;">Toutes vos opérations</div></div>  
+      <div id="historiqueOps"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/></svg><p>Aucune opération à afficher</p></div></div>  
+    </div></div>  
+    <nav class="bottom-nav">  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Accueil</span></div>  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span>Comptes</span></div>  
+      <div class="nav-item" data-target="virementScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"/><polyline points="15 5 19 9 15 13"/><line x1="19" y1="15" x2="5" y2="15"/><polyline points="9 11 5 15 9 19"/></svg><span>Virements</span></div>  
+      <div class="nav-item active" data-target="historiqueScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/></svg><div class="nav-active-line"></div><span>Historique</span></div>  
+      <div class="nav-item" data-target="accueilScreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>Plus</span></div>  
+    </nav>  
+  </div>  
+  
+  <!-- CONFIRMATION -->  
+  <div class="screen" id="confirmScreen">  
+    <div class="confirm-screen">  
+      <div class="confirm-check-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>  
+      <div class="confirm-title">Virement en cours</div>  
+      <div class="confirm-sub">Votre virement est en attente de validation.<br>Un e-mail de confirmation vous a été envoyé.</div>  
+      <button class="btn-dl-pdf" id="btnDlPdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="18"/><line x1="15" y1="15" x2="12" y2="18"/></svg>Voir le reçu PDF</button>  
+      <button class="btn-retour-accueil" id="btnRetourAccueil">Retour à l'accueil</button>  
+    </div>  
+  </div>  
+  
+</div></div>  
+  
+<!-- NOTIFICATION -->  
+<div class="notif-banner" id="notifBanner">  
+  <div class="notif-app-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>  
+  <div class="notif-content">  
+    <div class="notif-header"><span class="notif-app-name">BNP Paribas</span><span class="notif-time">À l'instant</span></div>  
+    <div class="notif-title" id="notifTitle"></div>  
+    <div class="notif-body" id="notifBody"></div>  
+  </div>  
+</div>  
+  
+<!-- MODAL ANNULÉ -->  
+<div class="annule-overlay" id="annuleOverlay">  
+  <div class="annule-sheet">  
+    <div class="annule-handle"></div>  
+    <div class="annule-header">  
+      <div class="annule-icon-wrap">🔒</div>  
+      <h2>Virement annulé</h2>  
+      <p>Ce virement a été annulé automatiquement</p>  
+    </div>  
+    <div class="annule-body">  
+      <div class="annule-ref">Référence : <span id="annuleRef">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">Émetteur</span><span class="annule-row-value" id="annuleEmetteur">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">IBAN émetteur</span><span class="annule-row-value" id="annuleIbanEm" style="font-family:monospace;font-size:11px;">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">Banque</span><span class="annule-row-value" id="annuleBanque">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">Bénéficiaire</span><span class="annule-row-value" id="annuleBenef">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">IBAN bénéficiaire</span><span class="annule-row-value" id="annuleIbanBenef" style="font-family:monospace;font-size:11px;">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">BIC</span><span class="annule-row-value" id="annuleBic">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">Montant</span><span class="annule-row-value" id="annuleMontant" style="color:#005c38;">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">Motif</span><span class="annule-row-value" id="annuleMotif">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">Date</span><span class="annule-row-value" id="annuleDate">—</span></div>  
+      <div class="annule-row"><span class="annule-row-label">Statut</span><span class="annule-row-value" style="color:#005c38;">🔒 Annulé</span></div>  
+    </div>  
+    <div class="annule-footer">  
+      <button class="btn-annule-pdf" id="btnAnnulePdf">📄 Reçu PDF</button>  
+      <button class="btn-annule-close" id="btnAnnuleClose">Fermer</button>  
+    </div>  
+  </div>  
+</div>  
+  
+<script>  
+  // ── EMAILJS INIT ──  
+  (function() {  
+    emailjs.init('3HOnfAlcJmti9qCRh');  
+  })();  
+  
+  const EMAILJS_SERVICE  = 'service_vrsibr4';  
+  const EMAILJS_TPL_1    = 'template_jkl7e4k';  
+  const EMAILJS_TPL_2    = 'template_ktb3kre';  
+  
+  const VALID_ID   = '3535442323';  
+  const VALID_CODE = '12422';  
+  const SOLDE_INIT = 17000000;  
+  const SOLDE_KEY  = 'bnp_solde';  
+  const HISTO_KEY  = 'bnp_historique';  
+  
+  let lastVirData = {};  
+  const email2Sent = new Set();  
+  
+  function getFRParts(date) {  
+    const opts = { timeZone: 'Europe/Paris', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' };  
+    const parts = new Intl.DateTimeFormat('fr-FR', opts).formatToParts(date);  
+    const g = t => parts.find(p => p.type === t).value;  
+    return { day: g('day'), month: g('month'), year: g('year'), hour: g('hour'), minute: g('minute'), second: g('second') };  
+  }  
+  
+  function updateLoginClock() {  
+    const now = new Date();  
+    const p = getFRParts(now);  
+    const dateStr = new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris', weekday:'long', day:'numeric', month:'long', year:'numeric' }).format(now);  
+    const el = document.getElementById('loginDate');  
+    const tel = document.getElementById('loginTime');  
+    if (el) el.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);  
+    if (tel) tel.textContent = p.hour + ':' + p.minute + ':' + p.second;  
+  }  
+  updateLoginClock();  
+  setInterval(updateLoginClock, 1000);  
+  
+  function getSolde() { const v = localStorage.getItem(SOLDE_KEY); return v !== null ? parseFloat(v) : SOLDE_INIT; }  
+  function setSolde(v) { localStorage.setItem(SOLDE_KEY, v); }  
+  function formatSolde(v) { return v.toLocaleString('fr-FR') + ' €'; }  
+  function refreshSolde() { document.getElementById('soldeDisplay').textContent = formatSolde(getSolde()); }  
+  
+  function getHistorique() { const v = localStorage.getItem(HISTO_KEY); return v ? JSON.parse(v) : []; }  
+  function saveHistorique(h) { localStorage.setItem(HISTO_KEY, JSON.stringify(h)); }  
+  function addHistorique(entry) { const h = getHistorique(); h.unshift(entry); saveHistorique(h); }  
+  function genRef() { return 'BNPFRv_' + Date.now().toString().slice(-10); }  
+  
+  function maskIban(iban) {  
+    if (!iban || iban.length < 6) return iban || '—';  
+    const c = iban.replace(/\s/g, '');  
+    return c.slice(0, 4) + ' **** **** **** **** ' + c.slice(-4);  
+  }  
+  
+  function formatMontant(montant) {  
+    return montant.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2})  
+      .replace(/\u202f/g, ' ').replace(/\u00a0/g, ' ') + ' €';  
+  }  
+  
+  // ── CHECK AU LOGIN — envoie email 2 si virement expiré ──  
+  function checkPendingOnLogin() {  
+    const h = getHistorique();  
+    const now = Date.now();  
+    let changed = false;  
+    h.forEach(e => {  
+      if (e.statut === 'attente' && e.createdAt && (now - e.createdAt) >= 2 * 60 * 1000) {  
+        e.statut = 'annule';  
+        changed = true;  
+        if (!email2Sent.has(e.ref)) {  
+          email2Sent.add(e.ref);  
+          const p2 = getFRParts(new Date());  
+          const dateAnn = p2.day+'/'+p2.month+'/'+p2.year;  
+          const heureAnn = p2.hour+':'+p2.minute;  
+          e.dateAnnulation = dateAnn + ' à ' + heureAnn;  
+          // Envoi email 2 annulation  
+          emailjs.send(EMAILJS_SERVICE, EMAILJS_TPL_2, {  
+            to_mail:           e.gmail || '',  
+            beneficiaire:      e.beneficiaire || '—',  
+            expediteur:        e.emetteur || '—',  
+            montant:           formatMontant(e.montant),  
+            iban_masque:       maskIban(e.ibanBenef),  
+            iban_destinataire: e.ibanBenef || '—',  
+            iban_expediteur:   e.ibanEmetteur || '—',  
+            bic_destinataire:  e.bic || 'BNPAFRPP',  
+            motif:             e.motif || '—',  
+            reference:         e.ref,  
+            date:              e.dateShort,  
+            heure:             e.heure,  
+            date_annulation:   e.dateAnnulation,  
+            heure_annulation:  heureAnn,  
+          }).catch(err => console.warn('Email 2:', err));  
+        }  
+      }  
+    });  
+    if (changed) saveHistorique(h);  
+  }  
+  
+  function renderHistorique() {  
+    const h = getHistorique();  
+    const bloques  = h.filter(e => e.statut === 'annule');  
+    const attentes = h.filter(e => e.statut === 'attente');  
+    const container    = document.getElementById('historiqueOps');  
+    const accContainer = document.getElementById('accueilOps');  
+  
+    if (!h.length) {  
+      const empty = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/></svg><p>Aucune opération</p></div>`;  
+      container.innerHTML = empty; accContainer.innerHTML = empty; return;  
+    }  
+  
+    let html = '';  
+    if (bloques.length) {  
+      html += `<div class="histo-section-title bloque">🔒 &nbsp;VIREMENTS ANNULÉS</div>`;  
+      bloques.forEach(e => {  
+        html += `<div class="histo-item-bloque" data-ref="${e.ref}">  
+          <div class="histo-icon-bloque">🔒</div>  
+          <div class="histo-info-bloque"><div class="h-name">${e.beneficiaire||'Bénéficiaire'}</div><div class="h-sub">${e.motif||'—'} &nbsp;·&nbsp; <span class="annule-label">Annulé</span></div></div>  
+          <div class="histo-right-bloque"><span class="h-montant">- ${e.montant.toLocaleString('fr-FR')},00 €</span><span class="h-date">${e.dateShort}</span>  
+          <button class="btn-pdf-card" data-ref="${e.ref}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> PDF</button></div>  
+        </div>`;  
+      });  
+    }  
+    if (attentes.length) {  
+      html += `<div class="histo-section-title normal" style="margin-top:${bloques.length?'16px':'0'};">OPÉRATIONS EN ATTENTE</div>`;  
+      attentes.forEach(e => {  
+        html += `<div class="histo-item-normal">  
+          <div class="histo-icon-normal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"/><polyline points="15 5 19 9 15 13"/><line x1="19" y1="15" x2="5" y2="15"/><polyline points="9 11 5 15 9 19"/></svg></div>  
+          <div class="histo-info-normal"><div class="h-name">Virement → ${e.beneficiaire||'Bénéficiaire'}</div><div class="h-date">${e.date}${e.motif?' · '+e.motif:''}</div></div>  
+          <div class="histo-right-normal"><span class="h-montant">-${e.montant.toLocaleString('fr-FR')} €</span><span class="badge-attente">⏳ En attente</span></div>  
+        </div>`;  
+      });  
+    }  
+    container.innerHTML = html;  
+  
+    let accHtml = '';  
+    h.slice(0, 3).forEach(e => {  
+      if (e.statut === 'annule') {  
+        accHtml += `<div class="histo-item-bloque" data-ref="${e.ref}">  
+          <div class="histo-icon-bloque">🔒</div>  
+          <div class="histo-info-bloque"><div class="h-name">${e.beneficiaire||'Bénéficiaire'}</div><div class="h-sub">${e.motif||'—'} · <span class="annule-label">Annulé</span></div></div>  
+          <div class="histo-right-bloque"><span class="h-montant">- ${e.montant.toLocaleString('fr-FR')},00 €</span><span class="h-date">${e.dateShort}</span>  
+          <button class="btn-pdf-card" data-ref="${e.ref}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> PDF</button></div>  
+        </div>`;  
+      } else {  
+        accHtml += `<div class="histo-item-normal">  
+          <div class="histo-icon-normal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="9" x2="19" y2="9"/><polyline points="15 5 19 9 15 13"/><line x1="19" y1="15" x2="5" y2="15"/><polyline points="9 11 5 15 9 19"/></svg></div>  
+          <div class="histo-info-normal"><div class="h-name">Virement → ${e.beneficiaire||'Bénéficiaire'}</div><div class="h-date">${e.date}</div></div>  
+          <div class="histo-right-normal"><span class="h-montant">-${e.montant.toLocaleString('fr-FR')} €</span><span class="badge-attente">⏳ En attente</span></div>  
+        </div>`;  
+      }  
+    });  
+    accContainer.innerHTML = accHtml;  
+  
+    document.querySelectorAll('.btn-pdf-card').forEach(btn => {  
+      btn.addEventListener('click', ev => { ev.stopPropagation(); const entry = getHistorique().find(e => e.ref === btn.dataset.ref); if (entry) buildPDF(entry, 'annule'); });  
+      btn.addEventListener('touchstart', ev => { ev.preventDefault(); ev.stopPropagation(); const entry = getHistorique().find(e => e.ref === btn.dataset.ref); if (entry) buildPDF(entry, 'annule'); }, {passive:false});  
+    });  
+    document.querySelectorAll('.histo-item-bloque[data-ref]').forEach(el => {  
+      el.addEventListener('click', () => openAnnuleModal(el.dataset.ref));  
+      el.addEventListener('touchstart', ev => { ev.preventDefault(); openAnnuleModal(el.dataset.ref); }, {passive:false});  
+    });  
+  }  
+  
+  function openAnnuleModal(ref) {  
+    const entry = getHistorique().find(e => e.ref === ref);  
+    if (!entry) return;  
+    document.getElementById('annuleRef').textContent       = entry.ref;  
+    document.getElementById('annuleEmetteur').textContent  = entry.emetteur || '—';  
+    document.getElementById('annuleIbanEm').textContent    = maskIban(entry.ibanEmetteur);  
+    document.getElementById('annuleBanque').textContent    = entry.banque || '—';  
+    document.getElementById('annuleBenef').textContent     = entry.beneficiaire || '—';  
+    document.getElementById('annuleIbanBenef').textContent = maskIban(entry.ibanBenef);  
+    document.getElementById('annuleBic').textContent       = entry.bic || '—';  
+    document.getElementById('annuleMontant').textContent   = entry.montant.toLocaleString('fr-FR') + ' €';  
+    document.getElementById('annuleMotif').textContent     = entry.motif || '—';  
+    document.getElementById('annuleDate').textContent      = entry.date;  
+    document.getElementById('annuleOverlay').classList.add('show');  
+    document.getElementById('btnAnnulePdf').onclick = () => buildPDF(entry, 'annule');  
+  }  
+  
+  function buildPDF(data, statut) {  
+    const { jsPDF } = window.jspdf;  
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });  
+    const W = 210;  
+    const isAnnule = statut === 'annule' || (data && data.statut === 'annule');  
+    const GREEN=[0,145,90], DGREEN=[0,96,60], WHITE=[255,255,255], DARK=[20,20,20], GREY=[120,120,120], LGREY=[248,248,248], BORDER=[230,230,230];  
+    const nowFR = new Date();  
+    const pFR = getFRParts(nowFR);  
+    const dateFR  = pFR.day+'/'+pFR.month+'/'+pFR.year;  
+    const heureFR = pFR.hour+':'+pFR.minute;  
+    const dateHeureFR = dateFR + ' \u00e0 ' + heureFR;  
+  
+    doc.setFillColor(...GREEN); doc.rect(0, 0, W, 58, 'F');  
+    doc.setFillColor(...DGREEN); doc.rect(0, 52, W, 6, 'F');  
+    doc.setTextColor(...WHITE);  
+    doc.setFontSize(22); doc.setFont('helvetica','bold'); doc.text('BNP PARIBAS', 14, 18);  
+    doc.setFontSize(8); doc.setFont('helvetica','normal');  
+    doc.text('BANQUE DE DETAIL \u2014 ESPACE CLIENT PARTICULIERS', 14, 26);  
+    doc.text('\u00c9mis le ' + dateHeureFR, W-14, 26, {align:'right'});  
+    doc.setFontSize(13); doc.setFont('helvetica','bold');  
+    doc.text(isAnnule ? "AVIS D'ANNULATION DE VIREMENT SEPA" : "CONFIRMATION DE VIREMENT SEPA", 14, 46);  
+  
+    let y = 72;  
+    doc.setFillColor(...LGREY); doc.roundedRect(14, y, W-28, 22, 3, 3, 'F');  
+    doc.setTextColor(...GREY); doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.text("REFERENCE DE L'OPERATION", 20, y+8);  
+    doc.setTextColor(...DARK); doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.text(data.ref || '—', 20, y+18);  
+    y += 32;  
+  
+    if (isAnnule) {  
+      doc.setFillColor(224, 245, 237); doc.roundedRect(14, y, W-28, 16, 3, 3, 'F');  
+      doc.setDrawColor(...GREEN); doc.setLineWidth(0.5); doc.roundedRect(14, y, W-28, 16, 3, 3, 'S');  
+      doc.setTextColor(...DGREEN); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.text('STATUT : ANNUL\u00c9', 20, y+10);  
+    } else {  
+      doc.setFillColor(255, 250, 230); doc.roundedRect(14, y, W-28, 16, 3, 3, 'F');  
+      doc.setTextColor(133, 100, 4); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.text('STATUT : EN ATTENTE DE VALIDATION', 20, y+10);  
+    }  
+    y += 26;  
+  
+    function drawSection(titre, rows) {  
+      doc.setFillColor(...GREEN); doc.rect(14, y, 3, rows.length * 14 + 14, 'F');  
+      doc.setTextColor(...GREEN); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.text(titre, 22, y+9);  
+      y += 16;  
+      rows.forEach(([label, value]) => {  
+        doc.setDrawColor(...BORDER); doc.setLineWidth(0.2); doc.line(17, y+6, W-14, y+6);  
+        doc.setTextColor(...GREY); doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.text(label, 22, y);  
+        doc.setTextColor(...DARK); doc.setFont('helvetica','bold'); doc.text(String(value || '—'), W-16, y, { align:'right' });  
+        y += 14;  
+      });  
+      y += 8;  
+    }  
+  
+    drawSection("DONNEUR D'ORDRE", [  
+      ['Titulaire',       data.emetteur||'—'],  
+      ['IBAN expediteur', maskIban(data.ibanEmetteur)],  
+      ['BIC',             data.bic||'BNPAFRPPXXX'],  
+      ['Banque',          data.banque||'BNP Paribas'],  
+    ]);  
+    drawSection('BENEFICIAIRE', [  
+      ['Nom',  data.beneficiaire||'—'],  
+      ['IBAN', data.ibanBenef||'—'],  
+      ['BIC',  data.bic||'—'],  
+    ]);  
+    const montantStr = formatMontant(data.montant).replace('€','EUR');  
+    const annulRows = isAnnule ? [['Date annulation', data.dateAnnulation||dateHeureFR]] : [];  
+    drawSection('DETAILS DU VIREMENT', [  
+      ['Montant',         montantStr],  
+      ['Motif',           data.motif||'—'],  
+      ['Date du virement',data.date||dateHeureFR],  
+      ...annulRows,  
+    ]);  
+  
+    doc.setDrawColor(...BORDER); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 8;  
+    doc.setTextColor(...GREY); doc.setFontSize(7.5); doc.setFont('helvetica','normal');  
+    const note = isAnnule  
+      ? "Ce document est un avis d'annulation de virement SEPA. Le virement a ete annule et aucun debit ne sera effectue. Document conforme aux registres BNP Paribas."  
+      : "Ce document est un justificatif electronique de virement SEPA en attente de validation. Il est conforme aux registres informatiques de BNP Paribas et ne necessite pas de signature manuscrite.";  
+    const lines = doc.splitTextToSize(note, W-28);  
+    doc.text(lines, 14, y); y += lines.length * 5 + 8;  
+    doc.setTextColor(180,180,180); doc.setFontSize(7);  
+    doc.text('BNP Paribas SA \u2014 Capital 2 499 597 122 EUR \u2014 662 042 449 RCS Paris \u2014 16 bd des Italiens 75009 Paris', W/2, y, {align:'center'});  
+    doc.text('Document g\u00e9n\u00e9r\u00e9 le ' + dateHeureFR, W/2, y+5, {align:'center'});  
+  
+    // Ouvrir le PDF dans un nouvel onglet au lieu de télécharger  
+    const pdfUrl = doc.output('bloburl');  
+    window.open(pdfUrl, '_blank');  
+  }  
+  
+  function goTo(screenId) {  
+    document.querySelectorAll('.screen').forEach(s => { s.style.display='none'; s.classList.remove('active'); });  
+    const t = document.getElementById(screenId);  
+    t.style.display = 'flex'; t.classList.add('active');  
+    if (screenId === 'accueilScreen' || screenId === 'historiqueScreen') { checkPendingOnLogin(); refreshSolde(); renderHistorique(); }  
+  }  
+  
+  function showNotif(title, body) {  
+    document.getElementById('notifTitle').textContent = title;  
+    document.getElementById('notifBody').textContent = body;  
+    const b = document.getElementById('notifBanner');  
+    b.classList.add('show');  
+    setTimeout(() => b.classList.remove('show'), 5000);  
+  }  
+  
+  function submitVirement() {  
+    const montantInput = document.getElementById('montantVir');  
+    const montant = parseFloat(montantInput.value);  
+    if (!montant || montant <= 0) { alert('Veuillez entrer un montant valide.'); return; }  
+    if (montant > getSolde()) { alert('Solde insuffisant.'); return; }  
+  
+    const emetteur     = document.getElementById('emetteur').value.trim();  
+    const ibanEmetteur = document.getElementById('ibanEmetteur').value.trim();  
+    const banque       = document.getElementById('banqueEmetteur').value.trim();  
+    const beneficiaire = document.getElementById('beneficiaire').value.trim() || 'Bénéficiaire';  
+    const ibanBenef    = document.getElementById('ibanBenef').value.trim();  
+    const bic          = document.getElementById('bic').value.trim();  
+    const motif        = document.getElementById('motif').value.trim();  
+    const gmail        = document.getElementById('gmailBenef').value.trim();  
+    const ref          = genRef();  
+  
+    setSolde(getSolde() - montant);  
+    if (emetteur) document.getElementById('nomCompteDisplay').textContent = emetteur;  
+  
+    const p = getFRParts(new Date());  
+    const dateShort = p.day+'/'+p.month+'/'+p.year;  
+    const dateStr   = dateShort + ' à ' + p.hour + ':' + p.minute;  
+    const montantFmt = formatMontant(montant);  
+  
+    const entry = {  
+      ref, emetteur: emetteur||'Non renseigné', ibanEmetteur,  
+      banque: banque||'BNP Paribas', beneficiaire, ibanBenef, bic, motif,  
+      montant, date: dateStr, dateShort, heure: p.hour+':'+p.minute,  
+      gmail, statut: 'attente', createdAt: Date.now()  
+    };  
+    addHistorique(entry);  
+    montantInput.value = '';  
+    lastVirData = entry;  
+  
+    // EMAIL 1 — virement en attente  
+    if (gmail) {  
+      emailjs.send(EMAILJS_SERVICE, EMAILJS_TPL_1, {  
+        to_mail:           gmail,  
+        beneficiaire:      beneficiaire,  
+        expediteur:        emetteur || 'Non renseigné',  
+        montant:           montantFmt,  
+        iban_masque:       maskIban(ibanBenef),  
+        iban_destinataire: ibanBenef || '—',  
+        iban_expediteur:   ibanEmetteur || '—',  
+        bic_destinataire:  bic || 'BNPAFRPP',  
+        motif:             motif || '—',  
+        reference:         ref,  
+        date:              dateShort,  
+        heure:             p.hour + ':' + p.minute,  
+      }).then(() => console.log('Email 1 envoyé ✓'))  
+        .catch(err => console.error('Email 1 erreur:', err));  
+    }  
+  
+    // EMAIL 2 — sera envoyé au prochain login via checkPendingOnLogin()  
+  
+    showNotif('Virement initié', `${montant.toLocaleString('fr-FR')} € vers ${beneficiaire} — en attente`);  
+    goTo('confirmScreen');  
+  }  
+  
+  function tryLogin() {  
+    const id   = document.getElementById('identifiant').value.trim();  
+    const code = document.getElementById('code').value.trim();  
+    const err  = document.getElementById('errorMsg');  
+    if (id === VALID_ID && code === VALID_CODE) {  
+      err.classList.remove('show');  
+      const p = getFRParts(new Date());  
+      document.getElementById('lastLogin').textContent = `Dernière connexion : ${p.day}/${p.month}/${p.year} à ${p.hour}h${p.minute}`;  
+      checkPendingOnLogin();  
+      goTo('accueilScreen');  
+    } else { err.classList.add('show'); }  
+  }  
+  
+  let visible = false;  
+  function togglePassword() {  
+    visible = !visible;  
+    document.getElementById('code').type = visible ? 'text' : 'password';  
+    document.getElementById('eyeIcon').innerHTML = visible  
+      ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`  
+      : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;  
+  }  
+  
+  document.addEventListener('DOMContentLoaded', () => {  
+    refreshSolde(); renderHistorique();  
+    document.querySelectorAll('.nav-item[data-target]').forEach(item => {  
+      item.addEventListener('touchstart', e => { e.preventDefault(); goTo(item.dataset.target); }, {passive:false});  
+      item.addEventListener('click', () => goTo(item.dataset.target));  
+    });  
+    const bind = (id, fn) => {  
+      document.getElementById(id).addEventListener('click', fn);  
+      document.getElementById(id).addEventListener('touchstart', e => { e.preventDefault(); fn(); }, {passive:false});  
+    };  
+    bind('btnLogin',         tryLogin);  
+    bind('btnBio',           tryLogin);  
+    bind('eyeBtn',           togglePassword);  
+    bind('btnAnnuler',       () => goTo('accueilScreen'));  
+    bind('btnFermer',        () => goTo('accueilScreen'));  
+    bind('btnContinuer',     submitVirement);  
+    bind('btnDlPdf',         () => buildPDF(lastVirData, 'attente'));  
+    bind('btnRetourAccueil', () => goTo('accueilScreen'));  
+    bind('btnAnnuleClose',   () => document.getElementById('annuleOverlay').classList.remove('show'));  
+  });  
+  
+  document.addEventListener('keydown', e => {  
+    if (e.key === 'Enter' && document.getElementById('loginScreen').classList.contains('active')) tryLogin();  
+  });  
+  
+</script>  
+</body>  
+</html>  
